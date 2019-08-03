@@ -2,7 +2,7 @@
 from flappy_bird import make
 import ga
 
-population = 3
+population = 1000
 render_after_gen = 0
 do_render = True
 nn_structure = [5, 5, 1]
