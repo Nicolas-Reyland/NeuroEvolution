@@ -10,6 +10,8 @@ class Snake:
         self.y = y
 
         self.length = length
+        self.score = 0 # total distance travelled
+        self.last_apple = 0
         self.done = False
 
         self.direction = direction # up, right, down, left
@@ -41,6 +43,8 @@ class Snake:
             self.direction = 3
 
     def next_position(self):
+        # increment score
+        self.score += 1
         # save current position
         self.positions.append((self.x, self.y))
         # next position
@@ -70,9 +74,36 @@ class Snake:
         if self.y > self.height - self.step or self.y < 0:
             self.done = True
         return self.done
-    
+
     def is_valid_position(self, position):
         return not position in self.positions or position != (self.x, self.y)
+
+    def direction_vector(self):
+        vector = [0,0]
+        # edit vector-x or -y
+        if self.direction == 0:
+            vector[1] -= 1
+        elif self.direction == 1:
+            vector[0] += 1
+        elif self.direction == 2:
+            vector[1] += 1
+        elif self.direction == 3:
+            vector[0] -= 1
+        return vector
+
+    def middle_points(self):
+        # head + body (inverse, else start at the tail)
+        return [(self.x + self.step / 2, self.y + self.step / 2)] + [(position[0] + self.step / 2, position[1] + self.step / 2) for position in self.positions[::-1]]
+
+    def lines(self):
+        '''Returns a list of tuples of positions, which are the center of the snake's body 'cubes' '''
+        points = self.middle_points()
+        lines = [(points[index], points[index+1]) for index in range(len(points)-1)] # optimize the lines, if the snake turned 3 times, there should be max 4 lines, and the length of the snake is not important (réfléchi)
+        return lines
+
+    def border_lines(self):
+        '''Same as self.lines(), but for the game borders'''
+        return [[(0,0), (self.width,0)], [(0,0), (0,self.height)], [(self.width,0), (self.width,self.height)], [(0,self.height), (self.width,self.height)]]
 
 
 
@@ -97,6 +128,7 @@ class Apple:
         if (self.x, self.y) == (snake.x, snake.y):
             self.new_position(snake)
             snake.length += 1
+            snake.last_apple = snake.score
             return True
     
     def new_position(self, snake):
@@ -105,8 +137,9 @@ class Apple:
         while snake.is_valid_position(new_apple_position) != True:
             new_apple_position = (random.randrange(0,self.width,snake.step), random.randrange(0,self.height,snake.step))
         self.x, self.y = new_apple_position
-
-
+    
+    def lines(self):
+        return [[(self.x,self.y), (self.x+self.apple_width,self.y)], [(self.x,self.y), (self.x,self.y+self.apple_width)], [(self.x+self.apple_width,self.y), (self.x+self.apple_width,self.y+self.apple_width)], [(self.x,self.y+self.apple_width), (self.x+self.apple_width,self.y+self.apple_width)]]
 
 
 def main():

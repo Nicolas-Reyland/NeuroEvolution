@@ -20,10 +20,10 @@ class NeuralNetwork:
         self.activation = [sigmoid] * (self.num_layers - 1)
 
     def build_weights(self):
-        self.weights = [np.random.random_sample((self.structure[i+1], self.structure[i])) * 2 - 1 for i in range(self.num_layers - 1)]
+        self.weights = [np.random.random_sample((self.structure[i], self.structure[i+1])).T * 2 - 1 for i in range(self.num_layers - 1)]
 
     def build_bias(self):
-        self.bias = [np.random.random_sample((self.structure[i], 1)) * 2 - 1 for i in range(1,self.num_layers)]
+        self.bias = [np.random.random_sample(self.structure[i+1]) * 2 - 1 for i in range(self.num_layers-1)] # working only in 1 dimension
 
     def predict(self, input_):
 
@@ -37,7 +37,7 @@ class NeuralNetwork:
             z = self.weights[i].dot(node_in) + self.bias[i] # raw output of layer (no activation function)
             h = self.activation[i](z) # final output of layer
 
-        return h[0][0]
+        return h
 
     def mutate(self, prob):
 

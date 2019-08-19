@@ -1,11 +1,12 @@
 # Snake Environment
-import snake_game as _fbg
+import snake_game as _sg
 import pygame_utils as _pgu
 from numpy import array
+from observation_functions import *
 
 import matrix
 
-_fbg.pg.init()
+_sg.pg.init()
 
 '''
 Author: Nicolas Reyland
@@ -13,8 +14,7 @@ my github: https://github.com/Nicolas-Reyland
 first release on ??/??/????
 version: 1.0.0
 
-
-This module is a personal open-source project
+This is a personal open-source project
 It contains a snake-game environment. The environment is made to look
 the same as openai environments.
 
@@ -53,18 +53,19 @@ class env(object):
         self.nn_structure = nn_structure
 
         self.pg_active = False
+        self.angle_step = 45
 
         # pygame + game borders
         self.screen = None
         self.width, self.height = 800, 500
 
         # save
-        self.score_till_save = 100
+        self.score_till_save = 5000
 
     def init_pygame(self):
         # init pygame
-        _fbg.pg.display.set_caption('Snake')
-        self.screen = _fbg.pg.display.set_mode((self.width, self.height))
+        _sg.pg.display.set_caption('Snake')
+        self.screen = _sg.pg.display.set_mode((self.width, self.height))
         # pass screen
         for agent in self.agents:
             agent.snake.screen = self.screen
@@ -89,51 +90,73 @@ class env(object):
         agent.snake.collide()
 
         agent.apple.eaten_by(agent.snake)
+        if agent.get_fitness() > self.best_score:
+            self.best_score = agent.get_fitness()
+        
+        if agent.get_fitness() >= self.score_till_save and not agent.saved:
+            agent.brain.save(self)
+            agent.saved = True
+
+        if agent.snake.score - agent.snake.last_apple > 500:
+            agent.snake.done = True
 
         return agent.snake.done
 
-    def observation(self, agent, flatten=True):
+    def observation(self, agent):
 
-        '''
-        ob = [[.0 for y in range(0,agent.height,agent.snake.step)] for x in range(0,agent.width,agent.snake.step)]
-        for index_x, x in enumerate(range(0,agent.width,agent.snake.step)):
-            for index_y, y in enumerate(range(0,agent.height,agent.snake.step)):
-                if (x,y) in agent.snake.positions or (x,y) == (agent.snake.x,agent.snake.y):
-                    ob[index_x][index_y] = 1.0
-                elif (x,y) == (agent.apple.x,agent.apple.y):
-                    ob[index_x][index_y] = -1.0
+        observation = []
+        for angle in range(0,360,self.angle_step):
 
-        if flatten: ob = [e for l in ob for e in l]
-
-        return ob
-        '''
-        observations = []
-        for angle in range(0,360,45):
             teta = matrix.deg_to_rad(angle)
-            ob = _angle_observation(agent, teta)
-            ob = _normalize_observation(ob, agent)
-            observations.append(ob)
-        return observations
+            ob = try_angle_observation(agent, agent.snake.lines(), teta)
+            observation.append(ob)
 
-    def render(self):
+        for angle in range(0,360,self.angle_step):
+
+            teta = matrix.deg_to_rad(angle)
+            ob = angle_observation(agent, agent.snake.border_lines(), teta)
+            observation.append(ob)
+
+        for angle in range(0,360,self.angle_step):
+
+            teta = matrix.deg_to_rad(angle)
+            ob = try_angle_observation(agent, agent.apple.lines(), teta)
+            observation.append(ob)
+
+        observation = normalize_observation(agent, observation)
+        # observation.append(angle_with_apple(agent))
+
+        # print(f'observation: {observation}')
+
+        return observation
+
+    def render(self, agent):
         if self.pg_active:
             self.screen.fill((0,0,0))
-            for agent in self.agents:
-                if not agent.snake.done:
-                    agent.snake.draw()
-                    agent.apple.draw()
+            if not agent.snake.done:
+                agent.snake.draw()
+                agent.apple.draw()
         else:
             self.init_pygame()
-            self.render()
+            self.render(agent)
             return
         # update screen
-        _fbg.pg.display.update()
+        _sg.pg.display.update()
         # check for pygame quit
-        for event in _fbg.pg.event.get():
-            if event.type == _fbg.pg.QUIT:
-                _fbg.pg.quit()
+        for event in _sg.pg.event.get():
+            if event.type == _sg.pg.QUIT:
+                _sg.pg.quit()
                 quit()
-    
+        _sg.pg.display.update()
+
+    def render_observation(self, agent, observation):
+
+        for i,coord in enumerate(observation):
+            # full white is 1st
+            _sg.pg.draw.line(self.screen, [255 - 255 / len(observation) * i]*3, agent.snake.middle_points()[0], coord, 1)
+            # print('[!!] DRAWN LINE')
+        _sg.pg.display.update()
+
     def get_clone_info(self):
         return [self.nn_structure, self.width, self.height]
 
@@ -142,29 +165,6 @@ class env(object):
         self.nn_structure = info[0]
         self.width = info[1]
         self.height = info[2]
-
-def _angle_observation(agent, teta):
-
-    # check if lines are parallel (no intersection...)
-    if matrix.slope(line[0], line[1]) == matrix.slope(position, position2):
-        print('line & position-line are parallel')
-        continue
-
-    # coordinates
-    x1,y1 = position
-    x2,y2 = position2
-    x3,y3 = line[0]
-    x4,y4 = line[1]
-    # intersection point calculation
-    px = ( (x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4) ) / ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4) )
-    py = ( (x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4) ) / ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4) )
-    # intersection coordinates
-    intersection = (px,py)
-    print(f'intersection at {intersection}')
-
-
-def _normalize_observation(ob, agent):
-    pass
 
 
 

@@ -5,7 +5,7 @@ import nn
 
 class Agent:
 
-    def __init__(self, id_, nn_structure, width, height, screen, step=10):
+    def __init__(self, id_, nn_structure, width, height, screen, step=10, length=3):
 
         self.id = id_
         self.fitness = 0
@@ -15,16 +15,27 @@ class Agent:
 
         self.screen = screen
         # randomize snake position / direction ?
-        self.snake = Snake(self.width//2, self.height//2, step, (self.width, self.height), self.screen)
+        self.snake = Snake(self.width//2, self.height//2, step, (self.width, self.height), self.screen, length=length)
         self.apple = Apple(step, (self.width, self.height), self.screen, self.snake)
+        self.base_length = length
 
         self.nn_structure = nn_structure
         self.brain = nn.NeuralNetwork(nn_structure)
+        self.saved = False
 
     def predict(self, input_):
         prediction = self.brain.predict(input_)
         prediction = np.argmax(prediction) # returns an index
         return prediction
+
+    def get_fitness(self):
+        '''Does NOT return the self.fitness. It returns the result of "(self.snake.length - self.base_length + 1) * self.snake.score - (some malus for not eatng apples)"'''
+        score = (self.snake.length - self.base_length + 1) * self.snake.score
+        if self.snake.score - self.snake.last_apple > 100:
+            score -= self.snake.score - self.snake.last_apple / 2
+        if self.snake.score - self.snake.last_apple > 1000:
+            score -= self.snake.score - self.snake.last_apple * 1.01
+        return score
 
     def clone(self):
 
@@ -34,29 +45,29 @@ class Agent:
         return clone
 
 
-def build_generation(n, env):
+def build_generation(n, env, **kwargs):
 
-    agents = [Agent(id_, env.nn_structure, env.width, env.height, env.screen) for id_ in range(n)]
+    agents = [Agent(id_, env.nn_structure, env.width, env.height, env.screen, **kwargs) for id_ in range(n)]
     return agents
 
-def next_generation(agents):
+def next_generation(agents, mutate_prob):
 
     # calculate fitness
-    fitness_sum = sum([agent.snake.length for agent in agents])
+    fitness_sum = sum([(agent.snake.length + 1) * agent.snake.score for agent in agents])
     for agent in agents:
-        agent.fitness = agent.snake.length / fitness_sum
+        agent.fitness = (agent.snake.length + 1) * agent.snake.score / fitness_sum
 
     # new generation
     population = len(agents)
     agents_backup = agents[:]
-    best_agent = list(sorted(agents, key=lambda agent: agent.snake.length, reverse=True))[0]
+    best_agent = list(sorted(agents, key=lambda agent: agent.get_fitness(), reverse=True))[0]
     for i in range(population-1):
-        agents[i] = pick_one(agents_backup)
+        agents[i] = pick_one(agents_backup, mutate_prob)
     agents[population-1] = best_agent.clone()
 
     return agents
 
-def pick_one(agents):
+def pick_one(agents, mutate_prob):
 
     index = 0
     r = np.random.random()
@@ -69,7 +80,7 @@ def pick_one(agents):
     agent = agents[index]
     child = Agent(agent.id, agent.nn_structure, agent.width, agent.height, agent.screen)
     child.brain = agent.brain.clone()
-    child.brain.mutate(.05)
+    child.brain.mutate(mutate_prob)
 
     return child
 

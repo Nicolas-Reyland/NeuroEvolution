@@ -18,7 +18,7 @@ class Agent:
         self.brain = nn.NeuralNetwork(nn_structure)
 
     def predict(self, input_):
-        prediction = self.brain.predict(input_)
+        prediction = self.brain.predict(input_)[0]
         #print(1, prediction)
         prediction = round(prediction)
         #print(2, prediction)

@@ -20,13 +20,14 @@ class NeuralNetwork:
         self.activation = [sigmoid] * (self.num_layers - 1)
 
     def build_weights(self):
-        self.weights = [np.random.random_sample((self.structure[i+1], self.structure[i])) * 2 - 1 for i in range(self.num_layers - 1)]
+        self.weights = [np.random.random_sample((self.structure[i], self.structure[i+1])).T * 2 - 1 for i in range(self.num_layers - 1)]
 
     def build_bias(self):
-        self.bias = [np.random.random_sample((self.structure[i], 1)) * 2 - 1 for i in range(1,self.num_layers)]
+        self.bias = [np.random.random_sample(self.structure[i+1]) * 2 - 1 for i in range(self.num_layers - 1)]
 
     def predict(self, input_):
 
+        # go through all the layers
         for i in range(self.num_layers - 1):
 
             if i == 0:
@@ -36,29 +37,32 @@ class NeuralNetwork:
 
             z = self.weights[i].dot(node_in) + self.bias[i] # raw output of layer (no activation function)
             h = self.activation[i](z) # final output of layer
-        
-        print(h)
 
         return h
 
     def mutate(self, prob):
 
+        # mutate function, mutates a node if random float < prob
         mutate_val = lambda val, prob: val + np.random.normal(0, .1) if np.random.random() < prob else val
 
+        # vectorize mutate function for faster mutation
         vfunc = np.vectorize(mutate_val)
 
+        # mutate the weights & bias with the vectorized mutate-function
         self.weights = [vfunc(W,prob) for W in self.weights]
         self.bias = [vfunc(b,prob) for b in self.bias]
 
     def clone(self):
 
+        # create a new neural network
         clone = NeuralNetwork(self.structure)
+        # change all changed variables
         clone.weights = self.weights[:]
         clone.bias = self.bias[:]
         clone.activation = self.activation
 
         return clone
-    
+
     def save(self, env):
 
         time = str(datetime.now()).split('.')[0]
@@ -92,7 +96,3 @@ def parametric_relu(x):
 def swish(x):
     # not sure ...
     return x * sigmoid(x)
-
-
-
-

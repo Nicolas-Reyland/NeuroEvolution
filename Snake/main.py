@@ -1,46 +1,50 @@
 # Enviroenment Flappy snake NeuroEvolution
+from __future__ import print_function
 from snake import make
 import ga
 
-population = 1
+population = 1000
 render_after_gen = 0
-do_render = True
-nn_structure = [800 * 500 // 10, (800 * 500 // 2) // 10, 4]
+do_render = False
+nn_structure = [24,16,4]
 env = make(nn_structure)
-use_custom = False
+
+print('[ ! ] Population: {} NeuralNetwork Structure: {} rendering: {} [ ! ]'.format(population, nn_structure, do_render))
+
+fitness_list = []
 
 generations = 0
-
 while True:
 
-    print(f'[!] Starting Generation: {generations}')
+    print('[!] Starting Generation: {}{}['.format(generations, ' ' * (3 - len(str(generations)))), end='')
 
     all_done = False
     env.reset()
 
-    agents = ga.build_generation(population, env) # n agents
+    agents = ga.build_generation(population, env, **{'length': 10}) # n agents
     env.agents = agents
 
-    for agent in agents:
-        while not agent.done:
+    for i,agent in enumerate(agents):
+        # print('[a] Agent {}'.format(agent.id))
+        while not agent.snake.done:
             info = env.observation(agent)
             next_move = agent.predict(info)
             done = env.step(agent, next_move)
             # render the game
             if generations >= render_after_gen and do_render:
-                env.render()
+                env.render(agent)
 
-    print('[s] best score: {}'.format(env.best_score))
+        if i % (population // 20) == 0: print('*', end='', flush=True)
+
+    print(']', end='')
+
+    print(' , best score: {}'.format(env.best_score))
+    fitness_list.append(ga.np.mean([agent.get_fitness() for agent in env.agents]))
 
     generations += 1
 
-    if generations == 50:
-        print('[!!] RESETING ALL')
-        agents = ga.build_generation(population, env) # n agents
-        generations = 0
-    else:
-        # do nn studd here ...
-        agents = ga.next_generation(agents)
+    # do nn studd here ...
+    agents = ga.next_generation(agents, .1)
 
 
 

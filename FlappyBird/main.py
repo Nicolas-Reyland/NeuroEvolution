@@ -4,7 +4,7 @@ import ga
 
 population = 1000
 render_after_gen = 0
-do_render = True
+do_render = False
 nn_structure = [5, 5, 1]
 env = make(nn_structure)
 use_custom = False
