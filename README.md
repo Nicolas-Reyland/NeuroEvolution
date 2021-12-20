@@ -1,4 +1,4 @@
 # NeuroEvolution
-NeuroEvolution for minigames
+NeuroEvolution for minigames with support for genetic algorithm
 
 openai-like environment
